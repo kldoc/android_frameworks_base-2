@@ -259,7 +259,7 @@ public class Camera {
     }
     
     public static Camera openOPService() {
-        return null;//return new Camera(-0x1, -0x64);
+        return new Camera(0, -0x64);
     }
 
     private void getNativeCameraMetadata(int camID){
