@@ -204,11 +204,12 @@ public class Camera {
     private CameraMetaDataCallback mCameraMetaDataCallback;
     /* ### QC ADD-ONS: END */
 
-    private static final int CAMERA_MSG_AEC = 0x4000;
-    private static final int CAMERA_MSG_DNG_IMAGE= 0x8000;
-    private static final int CAMERA_MSG_DNG_META_DATA = 0x10000;
-    private static final int CAMERA_MSG_IN_PROCESSING = 0x20000;
-    private static final int CAMERA_MSG_RAW_IMAGE_DUMMY = 0x40000;
+    private static final int CAMERA_MSG_AEC = 0x10000;
+    private static final int CAMERA_MSG_DNG_IMAGE= 0x20000;
+    private static final int CAMERA_MSG_DNG_META_DATA = 0x40000;
+    private static final int CAMERA_MSG_IN_PROCESSING = 0x80000;
+    private static final int CAMERA_MSG_STATE_CALLBACK = 0x100000;
+    private static final int CAMERA_MSG_RAW_IMAGE_DUMMY = 0x120000;
 
     private static CameraMetadataNative mMetadata;
     private long mMetadataPtr; 
@@ -218,6 +219,7 @@ public class Camera {
     private android.hardware.Camera.ProcessCallback mProcessCallback;
     private boolean mIsOPService = false;
     private android.hardware.Camera.PictureCallback mOPServiceJpegCallback = null;
+    private android.hardware.Camera.CameraStateCallback mCameraStateCallback;
 
     public interface AECallback {
 
@@ -238,6 +240,13 @@ public class Camera {
         public abstract void onProcess();
 
     }
+
+    public interface CameraStateCallback {
+
+        public abstract void onCameraStateChanged(byte[] p1, Camera p2);
+
+    }
+
     public void setAECallback(AECallback cb) {
         mAECallback = cb;
     }
@@ -256,6 +265,10 @@ public class Camera {
     
     public final void addDngImageCallbackBuffer(byte[] cb) {
         addRawImageCallbackBuffer(cb);
+    }
+
+    public final void setCameraStateCallback(CameraStateCallback cb) {
+        mCameraStateCallback = cb;
     }
     
     public static Camera openOPService() {
@@ -1438,6 +1451,13 @@ public class Camera {
                 //if (mProcessCallback != null) {
                 //    mProcessCallback.onProcess();
                 //}
+                return;
+
+            case CAMERA_MSG_STATE_CALLBACK:
+                Log.d(TAG,"CAMERA_MSG_STATE_CALLBACK");
+                if (mCameraStateCallback != null) {
+		    mCameraStateCallback.onCameraStateChanged((byte[])msg.obj, mCamera);
+		}
                 return;
 
             default:
@@ -3957,6 +3977,17 @@ public class Camera {
          * @see #getFlashMode()
          */
         public List<String> getSupportedFlashModes() {
+
+            String packageName = ActivityThread.currentOpPackageName();
+
+	    if (packageName != null) {
+		String focusMode = getFocusMode();
+
+		if ((focusMode != null) && (focusMode.equals("fixed")) && (!packageName.equals("com.oneplus.camera"))) {
+		    return null;
+		}
+	    }
+
             String str = get(KEY_FLASH_MODE + SUPPORTED_VALUES_SUFFIX);
             return split(str);
         }
